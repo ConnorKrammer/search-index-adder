@@ -130,6 +130,7 @@ module.exports = function (givenOptions, callback) {
           if (fieldOptions.fieldedSearch) {
             freq.forEach(function (item) {
               batchOptions.filters.forEach(function (filter) {
+                if (!_.isArray(doc[filter])) doc[filter] = [doc[filter]];
                 _.forEach(doc[filter], function (filterKey) {
                   docIndexEntries.push({
                     type: 'put',
