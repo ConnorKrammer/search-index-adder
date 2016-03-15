@@ -102,12 +102,13 @@ module.exports = function (givenOptions, callback) {
         var freqsForComposite = []; //put document frequencies in here
         _.forEach(doc, function (field, fieldName) {
           var fieldOptions = _.defaults(_.find(batchOptions.fieldOptions, ['fieldName', fieldName]) || {}, batchOptions.defaultFieldOptions);
-
+          if (!_.isUndefined(fieldOptions.separator)) fieldOptions.separator = fieldOptions.separator || /a^/;
+          else fieldOptions.separator = batchOptions.separator;
           if (fieldName == 'id') fieldOptions.stopwords = '';   // because you cant run stopwords on id field
-          else fieldOptions.stopwords = batchOptions.stopwords;
+          else fieldOptions.stopwords = fieldOptions.stopwords || batchOptions.stopwords;
           if (_.isArray(field)) field = field.join(tv.tokenSeparator); // make filter fields searchable
           var v = tv.getVector(field + '', {
-            separator: batchOptions.separator,
+            separator: fieldOptions.separator,
             stopwords: fieldOptions.stopwords,
             nGramLength: fieldOptions.nGramLength
           });
@@ -119,6 +120,13 @@ module.exports = function (givenOptions, callback) {
           if (fieldOptions.searchable)
             freqsForComposite.push(freq);
           var deleteKeys = [];
+          var separatorEntryValue = {};
+          separatorEntryValue[fieldOptions.separator.source || fieldOptions.separator] = [doc.id];
+          docIndexEntries.push({
+            type: 'put',
+            key: 'FI￮' + fieldName, // store how the field was tokenized
+            value: separatorEntryValue
+          });
           if (fieldOptions.fieldedSearch) {
             freq.forEach(function (item) {
               batchOptions.filters.forEach(function (filter) {
@@ -225,6 +233,17 @@ module.exports = function (givenOptions, callback) {
               else
                 prev.push(item);
             }
+            else if (item.key.substring(0, 2) == 'FI') {
+              var last = _.last(prev);
+              if (item.key == last.key) {
+                var k = _.keys(item.value)[0];
+                if (!last.value[k])
+                  last.value[k] = item.value[k];
+                else
+                  last.value[k].push(item.value[k][0]);
+              } else
+                prev.push(item);
+            }
             return prev;
           }, []);
         async.eachSeries(
@@ -246,6 +265,13 @@ module.exports = function (givenOptions, callback) {
                   if (b[1] > a[1]) return 1
                   if (b[1] < a[1]) return -1
                   return 0
+                });
+              }
+              else if (item.key.substring(0, 2) == 'FI') {
+                _.keys(item.value).forEach(function(k) {
+                  item.value[k].sort(function(a, b) {
+                    return a - b;
+                  });
                 });
               }
               else if (item.key == 'DOCUMENT-COUNT') {
