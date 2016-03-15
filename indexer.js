@@ -105,7 +105,7 @@ module.exports = function (givenOptions, callback) {
 
           if (fieldName == 'id') fieldOptions.stopwords = '';   // because you cant run stopwords on id field
           else fieldOptions.stopwords = batchOptions.stopwords;
-          if (_.isArray(field)) field = field.join(' '); // make filter fields searchable
+          if (_.isArray(field)) field = field.join(tv.tokenSeparator); // make filter fields searchable
           var v = tv.getVector(field + '', {
             separator: batchOptions.separator,
             stopwords: fieldOptions.stopwords,
