@@ -104,7 +104,7 @@ module.exports = function (givenOptions, callback) {
           var fieldOptions = _.defaults(_.find(batchOptions.fieldOptions, ['fieldName', fieldName]) || {}, batchOptions.defaultFieldOptions);
           if (!_.isUndefined(fieldOptions.separator)) fieldOptions.separator = fieldOptions.separator || /a^/;
           else fieldOptions.separator = batchOptions.separator;
-          if (fieldName == 'id') fieldOptions.stopwords = '';   // because you cant run stopwords on id field
+          if (fieldName == 'id') fieldOptions.stopwords = [];   // because you cant run stopwords on id field
           else fieldOptions.stopwords = fieldOptions.stopwords || batchOptions.stopwords;
           if (_.isArray(field)) field = field.join(tv.tokenSeparator); // make filter fields searchable
           var v = tv.getVector(field + '', {
@@ -120,13 +120,23 @@ module.exports = function (givenOptions, callback) {
           if (fieldOptions.searchable)
             freqsForComposite.push(freq);
           var deleteKeys = [];
-          var separatorEntryValue = {};
-          separatorEntryValue[fieldOptions.separator.source || fieldOptions.separator] = [doc.id];
-          docIndexEntries.push({
-            type: 'put',
-            key: 'FI￮' + fieldName, // store how the field was tokenized
-            value: separatorEntryValue
-          });
+          if (fieldName !== 'id') {
+            var separatorEntryValue = {};
+            separatorEntryValue[fieldOptions.separator.source || fieldOptions.separator] = [doc.id];
+            docIndexEntries.push({
+              type: 'put',
+              key: 'FI￮' + fieldName + '￮separator', // store how the field was tokenized
+              value: separatorEntryValue
+            });
+            console.log(fieldOptions);
+            var stopwordsEntryValue = {};
+            stopwordsEntryValue[fieldOptions.stopwords.join(tv.tokenSeparator)] = [doc.id];
+            docIndexEntries.push({
+              type: 'put',
+              key: 'FI￮' + fieldName + '￮stopwords', // store field stopwords
+              value: stopwordsEntryValue
+            });
+          }
           if (fieldOptions.fieldedSearch) {
             freq.forEach(function (item) {
               batchOptions.filters.forEach(function (filter) {
